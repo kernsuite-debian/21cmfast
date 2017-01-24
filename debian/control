@@ -2,7 +2,7 @@ Source: 21cmfast
 Section: science
 Priority: extra
 Maintainer: Gijs Molenaar <gijs@pythonic.nl>    
-Build-Depends:  debhelper (>= 8.0.0)
+Build-Depends:  debhelper (>= 8.0.0), libfftw3-dev, libgsl0-dev
 Standards-Version: 3.9.8
 Homepage: https://github.com/andreimesinger/21cmFAST
 Vcs-Git: git://github.com/kernsuite-debian/21cmfast.git
