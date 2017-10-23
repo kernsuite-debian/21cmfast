@@ -1,0 +1,14 @@
+Programs/delta_ps usr/bin
+Programs/delta_T usr/bin
+Programs/filter_den_hist usr/bin
+Programs/find_halos usr/bin
+Programs/find_HII_bubbles usr/bin
+Programs/gen_size_distr usr/bin
+Programs/init usr/bin
+Programs/kSZ_power usr/bin
+Programs/Makefile usr/bin
+Programs/perturb_field usr/bin
+Programs/PROGRAM_LIST usr/bin
+Programs/redshift_interpolate_boxes usr/bin
+Programs/Ts usr/bin
+Programs/update_halo_pos usr/bin
