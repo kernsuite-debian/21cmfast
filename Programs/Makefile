@@ -16,6 +16,7 @@ COSMO_FILES = 	${PARAMETER_DIR}/COSMOLOGY.H \
 	${COSMO_DIR}/ps.c \
 	${COSMO_DIR}/cosmo_progs.c \
 	${COSMO_DIR}/misc.c \
+	${COSMO_DIR}/recombinations.c \
 	${PARAMETER_DIR}/INIT_PARAMS.H \
 	${PARAMETER_DIR}/ANAL_PARAMS.H \
 	${PARAMETER_DIR}/HEAT_PARAMS.H \
@@ -33,7 +34,6 @@ OBJ_FILES = init \
   boxcar_smooth_field \
   Ts \
   drive_zscroll_noTs \
-  drive_zscroll_reion_param \
   drive_xHIscroll \
   kSZ_power \
   find_halos \
@@ -66,12 +66,6 @@ drive_zscroll_noTs: drive_zscroll_noTs.c \
 	${COSMO_FILES} \
 
 	${CC} ${CPPFLAGS} -o drive_zscroll_noTs drive_zscroll_noTs.c ${LDFLAGS}
-
-
-drive_zscroll_reion_param: drive_zscroll_reion_param.c \
-	${COSMO_FILES} \
-
-	${CC} ${CPPFLAGS} -o drive_zscroll_reion_param drive_zscroll_reion_param.c ${LDFLAGS}
 
 
 drive_xHIscroll: drive_xHIscroll.c \

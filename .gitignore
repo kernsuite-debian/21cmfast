@@ -7,9 +7,3 @@ Programs/*
 Log_files/*
 Boxes
 Output_files
-
-debian/*.debhelper.log
-debian/*.substvars
-debian/21cmfast/
-debian/files
-debian/debhelper-build-stamp

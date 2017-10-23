@@ -1,7 +1,0 @@
-#!/usr/bin/make -f
-
-override_dh_auto_clean:
-	cd Programs && rm -f drive_logZscroll_Ts init redshift_interpolate_boxes print_power_spec_ICs delta_ps delta_T find_HII_bubbles gen_size_distr perturb_field filter_den_hist boxcar_smooth_field Ts drive_zscroll_noTs drive_zscroll_reion_param drive_xHIscroll kSZ_power find_halos update_halo_pos
-
-%:
-	dh $@ --parallel --sourcedirectory=Programs
