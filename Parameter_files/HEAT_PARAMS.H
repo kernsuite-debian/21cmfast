@@ -13,36 +13,23 @@ NOTE:  We encourage the user to perform their own convergance tests if modifying
 
 
 /*
-  Efficiency parameter corresponding to the number of x-ray photons per
-  solar mass in stars, which escape the galaxy.
-*/
-#define ZETA_X (double) (2.0e56) // 2e56 ~ 0.3 X-ray photons per stellar baryon
-
-
-/*
-  The fraction of baryons converted to stars
-*/
-#define F_STAR (double) (0.05)
-
-
-/*
-  Smallest frequency X-ray photon contributing to IGM heating and ionization
+  The normalization of the soft-band X-ray luminosity per unit star formation, L_X, computed over the band E0 – 2 keV, i.e. NU_X_THRESH - NU_X_BAND_MAX.
+  When making a mock 21-cm observations, we assume the X-ray binary composite SED of Fragos et al. (2013),  with the ISM attenuation from Das et al. (2017), 
+  resulting in a fiducial value of L_{X <2 keV}/SFR = 10^{40.5}erg s^{-1} Msun^{-1} yr.
+  Here, L_X = 40.5 means log10(L_X) = 40.5
+  NOTE: Smallest frequency X-ray photon contributing to IGM heating and ionization
   There might be wierd behaviour if you set this to less than the HeII ionization
   threshold, <~54.4 eV
 */
+#define L_X (double) (40.5)
+#define NU_X_BAND_MAX (double) (2000*NU_over_EV)
 #define NU_X_THRESH (double) (500*NU_over_EV)
 
 
 /*
   X-Ray spectral index at frequencies higher than NU_X_THRESH
  */
-#define X_RAY_SPEC_INDEX (double) (1.2)
-
-
-/*
-  Minimum virial temperature (in K) of halos hosting X-ray sources responsible for heating the IGM
-*/
-#define X_RAY_Tvir_MIN (double) (ION_Tvir_MIN)
+#define X_RAY_SPEC_INDEX (double) (1.0)
 
 
 /*
@@ -73,8 +60,8 @@ Filter choice used for smoothing the linear density field to obtain the collapse
 #define R_XLy_MAX (float) (500)
 
 /*
-  Number of spherical anulli used to compute df_coll/dz' in the simulation box.
-  The spherical annulii are evenly spaced in log R, ranging from the cell size to the box size.
+  Number of spherical annuli used to compute df_coll/dz' in the simulation box.
+  The spherical annuli are evenly spaced in log R, ranging from the cell size to the box size.
   Ts.c will create this many boxes of size HII_DIM, so be wary of memory usage if values are high.
 */
 #define NUM_FILTER_STEPS_FOR_Ts (int) (40)
@@ -123,8 +110,8 @@ Filter choice used for smoothing the linear density field to obtain the collapse
 /*
   Number of ionizing photons per baryon of the two stellar species
 */
-#define Pop2_ion (float) (4361)
-#define Pop3_ion (float) (44021)
+#define Pop2_ion (float) (N_GAMMA_UV)
+#define Pop3_ion (float) (50000)
 
 /*
   Flag to turn off or on verbose status messages in Ts.  The GSL libraries are very finicky,
