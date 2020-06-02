@@ -125,9 +125,10 @@
   then find_HII_bubbles just prints a homogeneous xHI field
   of  1's.
 
-  This is a new option in v1.1. Previous versions had a hardcoded value of 1e-15.
+  Previous versions had a value of 1e-3. In order to avoid discontinuous of redshift evolution in PS, 
+  the threshold is changed to 1e-5, which is a hardcoded value.
 */
-#define HII_ROUND_ERR (float) (1e-3)
+#define HII_ROUND_ERR (float) (1e-5)
 
 
 /*
@@ -156,6 +157,13 @@
   which dominates the collapse fraction field on small scales (i.e. where the mean halo number 
   is small).  However, option (0) is faster as it bypasses the halo finder, and it becomes
   increasingly accurate as the typical bubble size increases.
+
+  NOTE: when using option (1), 
+        i) SET the real space top-hat filter for generating ionization field,
+           i.e. HII_FILTER = 0.
+        ii) BE CAREFUL the resolution is enough to resolve the minumum halo mass.
+            The minumum halo mass should be, at least, M_TURNOVER/3.
+            e.g., if M_TURNOVER = 5e8, BOX_LEN/DIM ~ 0.1
 */
 #define USE_HALO_FIELD (int) (0)
 
@@ -172,7 +180,7 @@
   it is recommended to turn off this feature, as halos can stocastically
   "pop in and out of" existance from one redshift to the next...
 */
-#define N_POISSON (int) (-1)
+#define N_POISSON (int) (5)
 
 
 /*

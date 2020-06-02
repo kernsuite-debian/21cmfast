@@ -53,6 +53,8 @@ void destroy_21cmMC_arrays() {
     free(second_derivs_Nion);
     free(xi_SFR);
     free(wi_SFR);
+    gsl_spline_free(NionLow_spline);
+    gsl_interp_accel_free(NionLow_spline_acc);
 }
 
 
@@ -89,7 +91,7 @@ int parse_arguments(int argc, char ** argv, int * num_th, int * arg_offset, floa
       *ALPHA_ESC = ESC_PL;
       *M_TURN = M_TURNOVER;
       *T_AST = t_STAR;
-	  *X_LUMINOSITY = 0;
+	  *X_LUMINOSITY = pow(10.,L_X);
 	}
     else{ return 0;} // format is not allowed
   } 
@@ -163,32 +165,30 @@ int main(int argc, char ** argv){
   char filename[1000], error_message[1000];
   FILE *F = NULL, *pPipe = NULL;
   float REDSHIFT, PREV_REDSHIFT, mass, R, xf, yf, zf, growth_factor, pixel_mass, cell_length_factor, massofscaleR;
-  float ave_N_min_cell, ION_EFF_FACTOR, M_MIN;
-  int x,y,z, N_min_cell, LAST_FILTER_STEP, num_th, arg_offset, i,j,k;
+  float ave_M_coll_cell, ave_N_min_cell, ION_EFF_FACTOR, M_MIN;
+  int x,y,z, N_halos_in_cell, LAST_FILTER_STEP, num_th, arg_offset, i=0,j,k;
   unsigned long long ct, ion_ct, sample_ct;
   float f_coll_crit, pixel_volume,  density_over_mean, erfc_num, erfc_denom, erfc_denom_cell, res_xH, Splined_Fcoll;
   float *xH=NULL, TVIR_MIN, MFP, xHI_from_xrays, std_xrays, *z_re=NULL, *Gamma12=NULL, *mfp=NULL;
   fftwf_complex *M_coll_unfiltered=NULL, *M_coll_filtered=NULL, *deltax_unfiltered=NULL, *deltax_filtered=NULL, *xe_unfiltered=NULL, *xe_filtered=NULL;
   fftwf_complex *N_rec_unfiltered=NULL, *N_rec_filtered=NULL;
   fftwf_plan plan;
-  double global_xH, ave_xHI_xrays, ave_den, ST_over_PS, mean_f_coll_st, f_coll, ave_fcoll, dNrec;
+  double global_xH=0, ave_xHI_xrays, ave_den, ST_over_PS, mean_f_coll_st, f_coll, ave_fcoll, dNrec;
   const gsl_rng_type * T=NULL;
   gsl_rng * r=NULL;
-  i=0;
   double t_ast, dfcolldt, Gamma_R_prefactor, rec;
   float nua, dnua, temparg, Gamma_R, z_eff;
-  float F_STAR10, ALPHA_STAR, F_ESC10, ALPHA_ESC, M_TURN, Mlim_Fstar, Mlim_Fesc; //New in v2
+  float F_STAR10, ALPHA_STAR, F_ESC10, ALPHA_ESC, M_TURN, Mlim_Fstar, Mlim_Fesc, Fstar, Fesc; //New in v2
   double X_LUMINOSITY;
-  float global_xH_m, fabs_dtdz, ZSTEP;
+  float fabs_dtdz, ZSTEP;
   const float dz = 0.01;
-  *error_message = '\0';
-
   int HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY = 0;
-  
   double aveR = 0;
   unsigned long long Rct = 0;
+  *error_message = '\0';
 
-    
+
+      
   /*************************************************************************************/  
   /******** BEGIN INITIALIZATION ********/
   /*************************************************************************************/  
@@ -234,8 +234,8 @@ int main(int argc, char ** argv){
   if (INHOMO_RECO) {  init_MHR();}
   if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) {
   	init_21cmMC_arrays();
-    Mlim_Fstar = Mass_limit_bisection(M_TURN/50., 1e16, ALPHA_STAR, F_STAR10);
-    Mlim_Fesc = Mass_limit_bisection(M_TURN/50., 1e16, ALPHA_ESC, F_ESC10);
+    Mlim_Fstar = Mass_limit(ALPHA_STAR, F_STAR10);
+    Mlim_Fesc = Mass_limit(ALPHA_ESC, F_ESC10);
     ION_EFF_FACTOR = N_GAMMA_UV * F_STAR10 * F_ESC10;
   }
   else
@@ -271,7 +271,7 @@ int main(int argc, char ** argv){
   gsl_rng_env_setup();
   T = gsl_rng_default;
   r = gsl_rng_alloc(T);
-  
+
 
   // OPEN LOG FILE
   system("mkdir ../Log_files");
@@ -300,9 +300,11 @@ int main(int argc, char ** argv){
   else { 
     mean_f_coll_st = FgtrM_st(REDSHIFT, M_MIN);
   }
-    /**********  CHECK IF WE ARE IN THE DARK AGES ******************************/
-    // lets check if we are going to bother with computing the inhmogeneous field at all...
-    if ((mean_f_coll_st*ION_EFF_FACTOR < HII_ROUND_ERR)){ // way too small to ionize anything...//New in v2
+
+  /**********  CHECK IF WE ARE IN THE DARK AGES ******************************/
+  // lets check if we are going to bother with computing the inhmogeneous field at all...
+  global_xH = 0;
+  if ((mean_f_coll_st*ION_EFF_FACTOR < HII_ROUND_ERR)){ // way too small to ionize anything...//New in v2
       fprintf(stderr, "The ST mean collapse fraction is %e, which is much smaller than the effective critical collapse fraction of %e\n \
                        I will just declare everything to be neutral\n", mean_f_coll_st, 1./ION_EFF_FACTOR);
       fprintf(LOG, "The ST mean collapse fraction is %e, which is much smaller than the effective critical collapse fraction of %e\n \
@@ -328,6 +330,7 @@ int main(int argc, char ** argv){
 	    strcpy(error_message, "find_HII_bubbles.c: Read error occured while reading xe box.\nAborting...\n");
 	    goto CLEANUP;
 	  }
+
 	  xH[ct] = 1-xH[ct]; // convert from x_e to xH
 	  if (xH[ct]<0) xH[ct] = 0; //  should not happen....
 	  global_xH += xH[ct];
@@ -347,7 +350,6 @@ int main(int argc, char ** argv){
       }
 
       // print out the xH box
-      global_xH_m = global_xH;
       switch(FIND_BUBBLE_ALGORITHM){
       case 2:
 	  if(HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY){
@@ -453,16 +455,45 @@ int main(int argc, char ** argv){
 	goto CLEANUP;
       }
       // now read in all halos above our threshold into the smoothed halo field
-      fscanf(F, "%e %f %f %f", &mass, &xf, &yf, &zf);
-      while (!feof(F) && (mass>=M_MIN)){
-	x = xf*HII_DIM;
-	y = yf*HII_DIM;
-	z = zf*HII_DIM;
-	*((float *)M_coll_unfiltered + HII_R_FFT_INDEX(x, y, z)) += mass;
-	fscanf(F, "%e %f %f %f", &mass, &xf, &yf, &zf);
-      }
-      fclose(F);
-	  F = NULL;
+      if(HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) {
+          fscanf(F, "%e %f %f %f", &mass, &xf, &yf, &zf);
+          while (!feof(F) && (mass>=M_MIN)){
+            x = xf*HII_DIM;
+            y = yf*HII_DIM;
+            z = zf*HII_DIM;
+
+            if (ALPHA_STAR > 0. && mass > Mlim_Fstar)
+                Fstar = 1./F_STAR10;
+            else if (ALPHA_STAR < 0. && mass < Mlim_Fstar)
+                Fstar = 1/F_STAR10;
+            else 
+                Fstar = pow(mass/1e10,ALPHA_STAR); 
+     
+            if (ALPHA_ESC > 0. && mass > Mlim_Fesc)
+                Fesc = 1./F_ESC10;
+            else if (ALPHA_ESC < 0. && mass < Mlim_Fesc)
+                Fesc = 1/F_ESC10;
+            else  
+                Fesc = pow(mass/1e10,ALPHA_ESC);
+
+            *((float *)M_coll_unfiltered + HII_R_FFT_INDEX(x, y, z)) += mass * Fstar * Fesc * exp(-M_TURN/mass);
+            fscanf(F, "%e %f %f %f", &mass, &xf, &yf, &zf);
+          }    
+          fclose(F);
+          F = NULL;
+      }    
+      else {
+          fscanf(F, "%e %f %f %f", &mass, &xf, &yf, &zf);
+          while (!feof(F) && (mass>=M_MIN)){
+            x = xf*HII_DIM;
+            y = yf*HII_DIM;
+            z = zf*HII_DIM;
+            *((float *)M_coll_unfiltered + HII_R_FFT_INDEX(x, y, z)) += mass;
+            fscanf(F, "%e %f %f %f", &mass, &xf, &yf, &zf);
+          }    
+          fclose(F);
+          F = NULL;
+      }    
     } // end of the USE_HALO_FIELD option
 
     
@@ -722,12 +753,13 @@ int main(int argc, char ** argv){
       for (x=0; x<HII_DIM; x++){
 	for (y=0; y<HII_DIM; y++){
 	  for (z=0; z<HII_DIM; z++){
+	    density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z));	    
 	    if (USE_HALO_FIELD){
 	      Splined_Fcoll = *((float *)M_coll_filtered + HII_R_FFT_INDEX(x,y,z)) / (massofscaleR*density_over_mean);
 	      Splined_Fcoll *= (4/3.0)*PI*pow(R,3) / pixel_volume;
+          if (Splined_Fcoll > 1.) Splined_Fcoll = 1.;
 	    }	    
 	    else{
-	      density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z));	    
 	      if ( (density_over_mean - 1) < Deltac){ // we are not resolving collapsed structures
 		if (HALO_MASS_DEPENDENT_IONIZING_EFFICIENCY) { // New in v2
 		  // Here again, 'Splined_Fcoll' and 'f_coll' are not the collpased fraction, but leave this name as is to simplify the variable name.
@@ -753,7 +785,7 @@ int main(int argc, char ** argv){
       } //  end loop through Fcoll box
 
       f_coll /= (double) HII_TOT_NUM_PIXELS; // ave PS fcoll for this filter scale
-      ST_over_PS = mean_f_coll_st/f_coll; // normalization ratio used to adjust the PS conditional collapsed fraction
+      if (!USE_HALO_FIELD) ST_over_PS = mean_f_coll_st/f_coll; // normalization ratio used to adjust the PS conditional collapsed fraction
       fprintf(LOG, "end f_coll normalization if, clock=%06.2f\n", (double)clock()/CLOCKS_PER_SEC);
       fflush(LOG);
 
@@ -772,23 +804,24 @@ int main(int argc, char ** argv){
       ion_ct=0;
       xHI_from_xrays = 1;
       Gamma_R_prefactor = pow(1+REDSHIFT, 2) * (R*CMperMPC) * SIGMA_HI * ALPHA_UVB / (ALPHA_UVB+2.75) * N_b0 * ION_EFF_FACTOR / 1.0e-12;
-
       for (x=0; x<HII_DIM; x++){
 	for (y=0; y<HII_DIM; y++){
 	  for (z=0; z<HII_DIM; z++){
 
 	    density_over_mean = 1.0 + *((float *)deltax_filtered + HII_R_FFT_INDEX(x,y,z));
 
-	    /*
-	    if (LAST_FILTER_STEP && (density_over_mean > 3)){
-	      fprintf(stderr, "%g at index: %i, %i, %i\n", density_over_mean, x,y,z);
-	      strcpy(error_message, "shs\n");
-	      goto CLEANUP;
-	    }
-	    */
-
-	    f_coll = ST_over_PS * Fcoll[HII_R_FFT_INDEX(x,y,z)];
+	    if (!USE_HALO_FIELD) f_coll = ST_over_PS * Fcoll[HII_R_FFT_INDEX(x,y,z)];
+        else f_coll = Fcoll[HII_R_FFT_INDEX(x,y,z)];
 	  
+	    // if this is the last filter step, prepare to account for poisson fluctuations in the sub grid halo number...
+	    // this is very approximate as it doesn't sample the halo mass function but merely samples a number of halos of a characterisic mass
+	    if (LAST_FILTER_STEP){
+	      ave_M_coll_cell = f_coll * pixel_mass * density_over_mean;
+	      ave_N_min_cell = ave_M_coll_cell / M_MIN; // ave # of M_MIN halos in cell
+	      N_halos_in_cell = (int) gsl_ran_poisson(r, N_POISSON);
+	    }
+
+
 	    if (INHOMO_RECO){
 	      dfcolldt = f_coll / t_ast;
 	      Gamma_R = Gamma_R_prefactor * dfcolldt;
@@ -833,16 +866,24 @@ int main(int argc, char ** argv){
 	    
 	    // If not fully ionized, then assign partial ionizations 
 	    else if (LAST_FILTER_STEP && (xH[HII_R_INDEX(x, y, z)] > TINY)){
-
 	      if (!USE_HALO_FIELD){
-		ave_N_min_cell = f_coll * pixel_mass * density_over_mean / M_MIN; // ave # of M_MIN halos in cell	      
 		if (ave_N_min_cell < N_POISSON){ // add poissonian fluctuations to the nalo number
-		  N_min_cell = (int) gsl_ran_poisson(r, ave_N_min_cell);
-		  f_coll = N_min_cell * M_MIN / (pixel_mass*density_over_mean);
+		  /*
+		  if ( (x==10) && (y==10) && (z%10==0)){
+		    fprintf(stderr, "In cell 10,10,%i, fcoll is %e, which corresponds to %i halos of mass %e\nWe will drew %i halos, making the final f_coll = %g\n", z, f_coll, (int) N_POISSON, ave_M_coll_cell / (float) N_POISSON,  N_halos_in_cell, N_halos_in_cell * (ave_M_coll_cell / (float) N_POISSON ) / (pixel_mass*density_over_mean));
+		  }
+		  */
+		  f_coll = N_halos_in_cell * (ave_M_coll_cell / (float) N_POISSON ) / (pixel_mass*density_over_mean);
+		  
+		  if (ave_M_coll_cell  < (M_MIN/5.0)){		    
+		    f_coll = 0;
+		  }
 		}
 	      }
-	      
+
+	      // assign sub grid partial ionizations
 	      res_xH = xHI_from_xrays - f_coll * ION_EFF_FACTOR;
+	      
 	      // and make sure fraction doesn't blow up for underdense pixels
 	      if (res_xH < 0)
 		res_xH = 0;
