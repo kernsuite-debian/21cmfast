@@ -1,3 +1,10 @@
+21cmfast (2.1-1kern2) focal; urgency=medium
+
+  [ Athanaseus Javas Ramaila ]
+  * Build for focal
+
+ --  <athanaseus@upload.kernsuite.info>  Tue, 09 Feb 2021 09:58:43 +0000
+
 21cmfast (2.1-1kern1) bionic; urgency=medium
 
   [ Athanaseus Javas Ramaila ]

@@ -1,9 +1,9 @@
 Source: 21cmfast
 Section: science
 Priority: extra
-Maintainer: Gijs Molenaar <gijs@pythonic.nl>    
-Build-Depends:  debhelper (>= 8.0.0), libfftw3-dev, libgsl0-dev
-Standards-Version: 4.4.1
+Maintainer: KERN Suite <KERN packaging <packaging@kernsuite.info>    
+Build-Depends:  debhelper (>=10), libfftw3-dev, libgsl0-dev
+Standards-Version: 4.5.0
 Homepage: https://github.com/andreimesinger/21cmFAST
 Vcs-Git: git://github.com/kernsuite-debian/21cmfast.git
 Vcs-Browser: http://github.com/kernsuite-debian/21cmfast
